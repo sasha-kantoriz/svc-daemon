@@ -1,6 +1,9 @@
 import socket
 import sys
-from optparce import OptionParser
+from optparse import OptionParser
+import time
+import pdb
+
 
 def parse_cli_args():
     argparser = OptionParser()
@@ -14,6 +17,7 @@ cli_args = parse_cli_args()
 
 # Create a UDS socket
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.settimeout(5)
 
 # Connect the socket to the port where the server is listening
 server_address = cli_args['socket_addr']
@@ -31,13 +35,23 @@ try:
     print('sending {!r}'.format(message))
     sock.sendall(message)
 
-    amount_received = 0
-    amount_expected = len(message)
+    # amount_received = 0
+    # amount_expected = len(message)
 
-    while amount_received < amount_expected:
-        data = sock.recv(16)
-        amount_received += len(data)
-        print('received {!r}'.format(data))
+    # while amount_received < amount_expected:
+    #     data = sock.recv(1024)
+    #     amount_received += len(data)
+    #     print('received {!r}'.format(data))
+
+    while True:
+        try:
+            data = sock.recv(1024)
+            # pdb.set_trace()
+            if data:
+                print(f'received {data}')
+        except socket.timeout:
+            print('Timeout receiving the data from server')
+            time.sleep(1)
 
 finally:
     print('closing socket')

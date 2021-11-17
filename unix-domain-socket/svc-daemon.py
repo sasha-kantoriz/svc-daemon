@@ -3,6 +3,8 @@ import sys
 import os
 from optparse import OptionParser
 
+BUFFER_SIZE = 1024
+
 def parse_cli_args():
     parser = OptionParser()
     parser.add_option("-s", "--socket",
@@ -38,7 +40,7 @@ while True:
 
         # Receive the data in small chunks and retransmit it
         while True:
-            data = connection.recv(16)
+            data = connection.recv(BUFFER_SIZE)
             print('received {!r}'.format(data))
             if data:
                 print('sending data back to the client')
