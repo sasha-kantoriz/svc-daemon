@@ -76,8 +76,12 @@ def _check_conn(client):
         else: return False
     """
     try:
-        client['conn'].sendall(b'')
-        return True
+        client['conn'].sendall(b'Ping')
+        if client['conn'].recv(1024):
+            return True
+        else:
+            client['conn'].close()
+            return False
     except socket.error as e:
         print(e)
         client['conn'].close()

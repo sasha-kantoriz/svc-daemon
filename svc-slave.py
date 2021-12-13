@@ -75,8 +75,9 @@ def main(sock_addr, sock_port):
                 try:
                     data = sock.recv(1024).decode('utf-8')
                     # connection HEATHCHECK 
-                    if data == 'Ping': 
+                    if data == 'Ping':
                         print(f'HEALTHCHECK {datetime.now()} <<< Ping')
+                        sock.sendall(b'Pong')
                         continue
                     # cluster FS initial connection
                     elif re.match('\d+', data):
