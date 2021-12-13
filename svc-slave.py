@@ -85,27 +85,15 @@ def main(sock_addr, sock_port):
                             cluster_fs_process.start()
                         except Exception as e:
                             print(e)
-                        # fs_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        # # fs_socket.settimeout(0.01)
-                        # fs_port = int(data)
-                        # fs_socket.connect((sock_addr, fs_port))
-                        # while True:
-                        #     try:
-                        #         fs_socket.sendall(f'Worker connected: {datetime.now()}'.encode('utf-8'))
-                        #         time.sleep(1)
-                        #         data = fs_socket.recv(1024).decode('utf-8')
-                        #         print(data)
-                        #     except socket.timeout:
-                        #         print('FS timeout')
-                        #     except socket.error as e:
-                        #         print(e)
-                        #         print('Cluster FS: Network socket exception.')
                     # worker
-                    else:
+                    elif data:
                         print(f'Received at : {datetime.now()} << {data}')
                         # handle payload
                         capture = handle_payload(cmd=data)
                         sock.sendall(capture)
+                    # server is off
+                    else:
+                        break
                 except socket.timeout:
                     # capture traceback
                     print('Timeout receiving command data from Command&Control')
