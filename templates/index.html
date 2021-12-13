@@ -7,12 +7,21 @@
         <title>Hello from C&C!</title>
     </head>
     <body>
+        <div class="d-flex bd-highlight">
+            <div class="p-2 flex-grow-1 bd-highlight">Worker IP address</div>
+            <div class="p-2 bd-highlight">Connected at</div>
+        </div>
         {%if connections %}
-            <ul>
             {% for conn in connections %}
-                <li><a href="/worker_{{ conn['url'] }}">{{ conn['ip'] }}</a></li>
+            <div class="d-flex bd-highlight">
+                <div class="p-2 flex-grow-1 bd-highlight">
+                    <a href="/worker_{{ conn['url'] }}">{{ conn['ip'] }}</a>
+                </div>
+                <div class="p-2 bd-highlight">
+                    <p>{{ conn['connected_at'] }}</p>
+                </div>
+            </div>
             {% endfor %}
-            </ul>
         {% endif %}
 
         {%if files %}

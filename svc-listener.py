@@ -86,7 +86,9 @@ while True:
                 'ip': client_addr[0],  #ip
                 'port': client_addr[1],  #port
                 'url': base64.b64encode(f'{client_addr[0]}:{client_addr[1]}'.encode('utf-8')).decode('utf-8'),  #addr
-                'history': []
+                'history': [],
+                'connected_at': datetime.now(),
+                'uptime': 0
             }
             connections.append(conn)
 
