@@ -55,9 +55,9 @@ def _worker_process(worker_connection, client=None):
     process_connection, process_client_addr = process_socket.accept()
     while True:
         try:
-            cluster_fs_data = process_connection.recv(1024)
-            with open('test', 'ab') as f:
-                f.write(f'{cluster_fs_data}\n'.encode('utf-8'))
+            cluster_fs_data = process_connection.recv(1024).decode('utf-8')
+            with open('test', 'a') as f:
+                f.write(f'{cluster_fs_data}\n')
             # print(cluster_fs_data)
             process_connection.sendall(f'Cluster server\'s FS data: {datetime.now()}'.encode('utf-8'))
             # cluster fs watcher
