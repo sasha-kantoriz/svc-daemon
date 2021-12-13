@@ -70,15 +70,15 @@ def get_ip():
     return local_ip
 
 
-def _check_conn(connection):
+def _check_conn(client):
     """
-        if connection is alive: return True
+        if client is alive: return True
         else: return False
     """
     try:
-        connection['conn'].sendall(b'')
-        # data = conn.recv(1024)
+        client['conn'].sendall(b'')
         return True
-    except socket.error:
-        connection['conn'].close()
+    except socket.error as e:
+        print(e)
+        client['conn'].close()
         return False
