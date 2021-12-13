@@ -47,6 +47,7 @@ def cluster_fs_worker(sock_addr, port):
             print(e)
             print('Cluster FS: Network socket exception. Closing connection...')
             fs_socket.close()
+            return
 
 def main(sock_addr, sock_port):
     """
