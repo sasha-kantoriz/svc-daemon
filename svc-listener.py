@@ -56,8 +56,8 @@ def _worker_process(worker_connection, client=None):
     while True:
         try:
             cluster_fs_data = process_connection.recv(1024).decode('utf-8')
-            with open('test', 'a') as f:
-                f.write(f'{cluster_fs_data}\n')
+            # with open('test', 'a') as f:
+            #     f.write(f'{cluster_fs_data}\n')
             # print(cluster_fs_data)
             process_connection.sendall(f'Cluster server\'s FS data: {datetime.now()}'.encode('utf-8'))
             # cluster fs watcher
@@ -140,7 +140,6 @@ while True:
             # payload: POST /b64<host:port>
             # payload from textarea form input
             # maintain commands history
-            history = []
             host = data.split()[1][9:] #b64decode split(':')
             payload = unquote_plus(data.split()[-1].split('payload=')[1])
             #host, port = base64.b64decode(host).decode('utf-8').split(':')
@@ -152,7 +151,12 @@ while True:
             print(f'sending payload to {host}: >> {payload}')
             worker_connection['conn'].sendall(payload.encode('utf-8'))
             # render payload result
-            response_data = worker_connection['conn'].recv(1024).decode('utf-8')
+            try:
+                worker_connection['conn'].settimeout(60)
+                response_data = worker_connection['conn'].recv(1024).decode('utf-8')
+            except socket.timeout:
+                response_data = ''
+                worker_connection['conn'].settimeout(None)
             worker_connection['history'].append(f'>>> {payload}<br/><<< {response_data}')
             print(f'Slave {host} reply: << {response_data}')
             template = templateEnv.get_template('worker.html')
