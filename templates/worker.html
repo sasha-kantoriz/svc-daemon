@@ -1,12 +1,36 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <form action="/payload_{{conn['url']}}" method="POST">
-        <label for="payload">Payload:</label>
-        <textarea id="payload" name="payload" rows="10" cols="80"></textarea>
-        <br><br>
-        <input type="submit" value="Submit">
-    </form>
+    <div class="payload-header-container">
+        <header class='payload-form-header'>
+            <h1>{{ conn['ip'] }}</h1>
+            <em>Execute scripts on remote worker machine.</em>
+        </header>
+    </div>
+
+    <div class="payload">
+        
+        <form action="/payload_{{conn['url']}}" method="POST" class='payload-form'>
+
+            <div class="payload-row">
+                <label for="payload">Payload</label>
+                <textarea id="payload" name="payload"></textarea>
+            </div>
+
+            <div class="payload-row">
+                <div class='instructions'>
+                    <div class='examples'>Examples:</div>
+                    <div class='examples'>for i in 1 2 3; do echo $i; done</div>
+                    <div class='examples'>echo 'for i in range(3):\n\tprint(i)' | python3</div>
+                    <div class='examples'>echo 'for i in 1 2 3\ndo\necho $i\ndone' | bash</div>
+                </div>
+            </div>
+            <div class="payload-row">
+                <button type="submit" class="btn btn-secondary">Submit</button>
+            </div>
+
+        </form>
+    </div>
 
     {% if response %}
         <h1>{{response}}</h1>
