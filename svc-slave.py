@@ -25,6 +25,11 @@ def parse_cli_args():
 
 def handle_payload(cmd, *args, **kwargs):
     command_payload = [cmd] + list(args)
+    # try:
+    #     result = subprocess.check_output(cmd, shell=True, stderr=subprocess.PIPE)
+    # except subprocess.CalledProcessError as e:
+    #     result = f'STDOUT: {e.stdout}, STDERR: {e.stderr}'
+    # return result
     pipes = subprocess.Popen(command_payload, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     std_out, std_err = pipes.communicate()
     if pipes.returncode == 0:
@@ -44,7 +49,7 @@ def cluster_fs_worker(sock_addr, port):
             fs_socket.sendall(f'Worker connected: {datetime.now()}'.encode('utf-8'))
             time.sleep(1)
             data = fs_socket.recv(1024).decode('utf-8')
-            print(data)
+            # print(data)
         except socket.timeout:
             print('FS timeout')
         except socket.error as e:
