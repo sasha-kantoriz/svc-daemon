@@ -5,24 +5,64 @@
         <meta name='viewport' content='width=device-width, initial-scale=1'>
         <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css' rel='stylesheet' integrity='sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC' crossorigin='anonymous'>
         <title>Hello from C&C!</title>
+        <style>
+            .nav-menu {
+                display: flex;
+                justify-content: space-between;
+            }
+            .dropdown-toggle {
+                margin-right: 50px;
+            }
+        </style>
     </head>
     <body>
-        <div class="d-flex bd-highlight">
-            <div class="p-2 flex-grow-1 bd-highlight">Worker IP address</div>
-            <div class="p-2 bd-highlight">Connected at</div>
-        </div>
-        {%if connections %}
-            {% for conn in connections %}
-            <div class="d-flex bd-highlight">
-                <div class="p-2 flex-grow-1 bd-highlight">
-                    <a href="/worker_{{ conn['url'] }}">{{ conn['ip'] }}</a>
+
+        <div class="collapse" id="navbarToggleExternalContent">
+            <div class="bg-dark p-4">
+                <span class="text-muted">Connected at:</span>
+                <h6 class="text-white h4">Dec 14 2021</h6>
+            </div>
+          </div>
+          <nav class="navbar navbar-dark bg-dark">
+            <div class="nav-menu container-fluid">
+                <div>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggleExternalContent" aria-controls="navbarToggleExternalContent" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
                 </div>
-                <div class="p-2 bd-highlight">
-                    <p>{{ conn['connected_at'] }}</p>
+                <div class="dropdown-toggler btn-group" role="group">
+                    <button id="btnGroupDrop1" type="button" class="btn btn-dark dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        Workers
+                    </button>
+                    {%if connections %}
+                    <ul class="dropdown-menu">
+                        {% for conn in connections %}
+                            <li><a class="dropdown-item" href="/worker_{{ conn['url'] }}">{{ conn['ip'] }}</a></li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
                 </div>
             </div>
-            {% endfor %}
-        {% endif %}
+          </nav>
+
+        <div class="list-group-flush">
+            <div class="d-flex bd-highlight list-group-item">
+                <div class="p-2 flex-grow-1 bd-highlight">Filename</div>
+                <div class="p-2 bd-highlight">Modified at</div>
+            </div>
+            {%if files %}
+                {% for file in files %}
+                <div class="d-flex bd-highlight list-group-item">
+                    <div class="p-2 flex-grow-1 bd-highlight">
+                        <a href="/file_{{ file['url'] }}">{{ file['name'] }}</a>
+                    </div>
+                    <div class="p-2 bd-highlight">
+                        {{ file['modified_at'] }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
 
         {%if files %}
             <ul>
