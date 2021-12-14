@@ -8,6 +8,7 @@ from optparse import OptionParser
 from threading import Thread
 import multiprocessing
 
+import config
 import utilities
 
 
@@ -69,11 +70,15 @@ def _worker_process(worker_connection, client=None):
             process_connection.close()
             return
 
+
+utilities.init_fs(config.CLUSTER_FS_DIR_NAME)
+
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_address = opts['socket_host'], int(opts['socket_port'])
 sock.bind(server_address)
-sock.listen(5)
+sock.listen(config.MAX_WORKERS)
 
 connections = list()
 while True:
@@ -152,7 +157,7 @@ while True:
             worker_connection['conn'].sendall(payload.encode('utf-8'))
             # render payload result
             try:
-                worker_connection['conn'].settimeout(60)
+                worker_connection['conn'].settimeout(config.COMMAND_TIMEOUT)
                 response_data = worker_connection['conn'].recv(1024).decode('utf-8')
             except socket.timeout:
                 response_data = ''
