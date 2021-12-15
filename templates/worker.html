@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="payload-header-container">
-        <header class='payload-form-header'>
+    <div class="header-container">
+        <header class='generic-header'>
             <h1>{{ conn['ip'] }}</h1>
             <em>Execute scripts on remote worker machine.</em>
         </header>
@@ -33,14 +33,22 @@
     </div>
 
     {% if response %}
-        <h1>{{response}}</h1>
+    <div class="header-container">
+        <div class="command-result">
+            <h6><pre>{{ response }}</pre></h6>
+        </div>
+    </div>
     {% endif %}
 
+    <div class="commands-history">
     {% if history %}
-        <ol>
+        <ol class="history">
         {% for cmd in history %}
-            <li>{{ cmd }}</li>
+            <div class="history-row">
+                <li><pre>{{ cmd }}</pre></li>
+            </div>
         {% endfor %}
         </ol>
     {% endif %}
+    </div>
 {% endblock %}
