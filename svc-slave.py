@@ -9,6 +9,7 @@ from datetime import datetime
 from optparse import OptionParser
 from random import randrange
 
+import config
 import utilities
 
 
@@ -48,7 +49,7 @@ def cluster_fs_worker(sock_addr, port):
         try:
             fs_socket.sendall(f'Worker connected: {datetime.now()}'.encode('utf-8'))
             time.sleep(1)
-            data = fs_socket.recv(1024).decode('utf-8')
+            data = fs_socket.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
             # print(data)
         except socket.timeout:
             print('FS timeout')
@@ -82,7 +83,7 @@ def main(sock_addr, sock_port):
 
             while True:
                 try:
-                    data = sock.recv(1024).decode('utf-8')
+                    data = sock.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
                     # connection HEATHCHECK 
                     if data == 'Ping':
                         print(f'HEALTHCHECK {datetime.now()} <<< Ping')
