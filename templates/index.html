@@ -1,22 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="list-group-flush">
-    <div class="d-flex bd-highlight list-group-item">
-        <div class="p-2 flex-grow-1 bd-highlight">Filename</div>
-        <div class="p-2 bd-highlight">Modified at</div>
-    </div>
-    {%if files %}
-        {% for file in files %}
-        <div class="d-flex bd-highlight list-group-item">
-            <div class="p-2 flex-grow-1 bd-highlight">
-                <a href="/file_{{ file['url'] }}">{{ file['name'] }}</a>
-            </div>
-            <div class="p-2 bd-highlight">
-                {{ file['modified_at'] }}
-            </div>
-        </div>
-        {% endfor %}
-    {% endif %}
+<div class="header-container">
+    <header class='generic-header'>
+        <h1>{{ directory }}</h1>
+    </header>
 </div>
+
+<div class="directory">
+    <div class="files-listing list-group-flush">
+        <div class="d-flex bd-highlight list-group-item">
+            <div class="p-2 flex-grow-1 bd-highlight">Filename</div>
+            <div class="p-2 fs-column bd-highlight">Type</div>
+            <div class="p-2 fs-column bd-highlight">Modified at</div>
+        </div>
+        {%if files %}
+            {% for file in files %}
+            <div class="d-flex bd-highlight list-group-item">
+                <div class="p-2 flex-grow-1 bd-highlight">
+                    <a href="/{{ file['url'] }}">{{ file['name'] }}</a>
+                </div>
+                <div class="p-2 fs-column bd-highlight">
+                    {{ file['type'] }}
+                </div>
+                <div class="p-2 fs-column bd-highlight">
+                    {{ file['modified_at'] }}
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+<div class="payload">
+        
+    <form action="/new_file" method="POST" class='payload-form'>
+
+        <div class="payload-row">
+            <label for="path">Path</label>
+            <input id="path" name="path" type="text"></input>
+
+            <label for="content">Content</label>
+            <textarea id="content" name="content"></textarea>
+        </div>
+
+        <div class="payload-row">
+            <button type="submit" class="btn btn-secondary">Submit</button>
+        </div>
+
+    </form>
+</div>
+
 {% endblock %}
