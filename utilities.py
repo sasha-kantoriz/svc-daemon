@@ -1,5 +1,8 @@
 import socket
-
+import os
+import base64
+import hashlib
+import datetime
 
 
 def server(data, connection, conns):
@@ -86,3 +89,90 @@ def _check_conn(client):
         print(e)
         client['conn'].close()
         return False
+
+
+"""
+Cluster FS functional:
+
+        file = {
+            :name,
+            :type,
+            :path,
+            :url,
+            :hash,
+            :content,
+            :modified_at,
+            :checked_at
+        }
+
+"""
+
+
+def init_fs(dir_path):
+    os.makedirs(dir_path, exist_ok=True)
+
+
+def traverse_fs_files(dir_path):
+    _files = []
+    for root, subdirs, files in os.walk(dir_path):
+        for dir_ in subdirs:
+            dir_path = os.path.join(root, dir_)
+            subdir = {
+                "name": dir_,
+                "type": "directory",
+                "path": dir_path,
+                "url": f'directory_{base64.b64encode(dir_path.encode("utf-8")).decode("utf-8")}',
+                "hash": None,
+                "content": None, # list of nested files?
+                "modified_at": None,
+                "checked_at": datetime.datetime.now().isoformat()
+            }
+            _files.append(subdir)
+        for file_ in files:
+            file_path = os.path.join(root, file_)
+            file_content = open(file_path).read()
+            f = {
+                "name": file_,
+                "type": "file",
+                "path": file_path,
+                "url": f"file_{base64.b64encode(file_path.encode('utf-8')).decode('utf-8')}",
+                "hash": hashlib.md5(file_content.encode('utf-8')),
+                "content": file_content,
+                "modified_at": None,
+                "checked_at": datetime.datetime.now().isoformat()
+            }
+            _files.append(f)
+    return _files
+
+
+def traverse_directory(dir_path):
+    _files = []
+    root, subdirs, files = list(os.walk(dir_path))[0]
+    for dir_ in subdirs:
+        dir_path = os.path.join(root, dir_)
+        subdir = {
+            "name": dir_,
+            "type": "directory",
+            "path": dir_path,
+            "url": f'directory_{base64.b64encode(dir_path.encode("utf-8")).decode("utf-8")}',
+            "hash": None,
+            "content": None, # list of nested files?
+            "modified_at": None,
+            "checked_at": datetime.datetime.now().isoformat()
+        }
+        _files.append(subdir)
+    for file_ in files:
+        file_path = os.path.join(root, file_)
+        file_content = open(file_path).read()
+        f = {
+            "name": file_,
+            "type": "file",
+            "path": file_path,
+            "url": f"file_{base64.b64encode(file_path.encode('utf-8')).decode('utf-8')}",
+            "hash": hashlib.md5(file_content.encode('utf-8')),
+            "content": file_content,
+            "modified_at": None,
+            "checked_at": datetime.datetime.now().isoformat()
+        }
+        _files.append(f)
+    return _files

