@@ -1,8 +1,10 @@
 import socket
 import os
+import json
 import base64
 import hashlib
 import datetime
+from urllib import parse
 
 
 def server(data, connection, conns):
@@ -121,7 +123,8 @@ def traverse_fs_files(dir_path):
                 "name": dir_,
                 "type": "directory",
                 "path": dir_path,
-                "url": f'directory_{base64.b64encode(dir_path.encode("utf-8")).decode("utf-8")}',
+                "parent_dir": root,
+                "url": f'{get_directory_url(dir_path)}',
                 "hash": None,
                 "content": None, # list of nested files?
                 "modified_at": None,
@@ -135,8 +138,9 @@ def traverse_fs_files(dir_path):
                 "name": file_,
                 "type": "file",
                 "path": file_path,
-                "url": f"file_{base64.b64encode(file_path.encode('utf-8')).decode('utf-8')}",
-                "hash": hashlib.md5(file_content.encode('utf-8')),
+                "parent_dir": root,
+                "url": f"{get_file_url(file_path)}",
+                "hash": hashlib.md5(file_content.encode('utf-8')).hexdigest(),
                 "content": file_content,
                 "modified_at": None,
                 "checked_at": datetime.datetime.now().isoformat()
@@ -145,18 +149,27 @@ def traverse_fs_files(dir_path):
     return _files
 
 
-def traverse_directory(dir_path):
-    _files = []
-    root, subdirs, files = list(os.walk(dir_path))[0]
+def get_directory_url(dir_path):
+    return f'/directory_{base64.b64encode(dir_path.encode("utf-8")).decode("utf-8")}'
 
-    if len(root.split('/')[:-1]) > 0:
-        parent_directory = os.path.join(*root.split('/')[:-1])
+def get_file_url(file_path):
+    return f'/file_{base64.b64encode(file_path.encode("utf-8")).decode("utf-8")}'
+
+
+def traverse_directory(fs_state_file, fs_directory, dir_path):
+    fs_state = get_fs_state(fs_state_file, fs_directory)
+
+    _directory_url = get_directory_url(dir_path)
+    _directory, _files = fs_get_by_url(fs_state_file, fs_directory, _directory_url), []
+
+    if _directory.get('parent_dir'):
+        parent_directory = _directory.get('parent_dir')
         _files.append(
             {
                 "name": '..',
                 "type": "directory",
                 "path": parent_directory,
-                "url": f'directory_{base64.b64encode(parent_directory.encode("utf-8")).decode("utf-8")}',
+                "url": f'{get_directory_url(parent_directory)}',
                 "hash": None,
                 "content": None, # list of nested files?
                 "modified_at": None,
@@ -164,31 +177,26 @@ def traverse_directory(dir_path):
             }
         )
 
-    for dir_ in subdirs:
-        dir_path = os.path.join(root, dir_)
-        subdir = {
-            "name": dir_,
-            "type": "directory",
-            "path": dir_path,
-            "url": f'directory_{base64.b64encode(dir_path.encode("utf-8")).decode("utf-8")}',
-            "hash": None,
-            "content": None, # list of nested files?
-            "modified_at": None,
-            "checked_at": datetime.datetime.now().isoformat()
-        }
-        _files.append(subdir)
-    for file_ in files:
-        file_path = os.path.join(root, file_)
-        file_content = open(file_path).read()
-        f = {
-            "name": file_,
-            "type": "file",
-            "path": file_path,
-            "url": f"file_{base64.b64encode(file_path.encode('utf-8')).decode('utf-8')}",
-            "hash": hashlib.md5(file_content.encode('utf-8')),
-            "content": file_content,
-            "modified_at": None,
-            "checked_at": datetime.datetime.now().isoformat()
-        }
-        _files.append(f)
+    for _file in fs_state:
+        if _file['parent_dir'] == dir_path:
+            _files.append(_file)
     return _files
+
+
+def get_fs_state(fs_state_file, fs_directory):
+    try:
+        with open(fs_state_file) as f:
+            fs_state = json.load(f)
+    except (json.decoder.JSONDecodeError, FileNotFoundError):        
+        fs_state = traverse_fs_files(fs_directory)
+        with open(fs_state_file, 'w') as f:
+            json.dump(fs_state, f)
+    return fs_state
+
+
+def fs_get_by_url(fs_state_file, fs_directory, file_url):
+    fs_state = get_fs_state(fs_state_file, fs_directory)
+    for _file in fs_state:
+        if _file['url'] == file_url:
+            return _file
+    return {}
