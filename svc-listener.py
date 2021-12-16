@@ -111,7 +111,6 @@ while True:
             # payload URLs: POST /b64<payload>?b64<host:port>
             # add payload input field
             print(f'Web interface Request data: << GET /index.html')
-
             files = utilities.traverse_directory(config.CLUSTER_FS_DIR_NAME)
 
             template = templateEnv.get_template('index.html')
@@ -192,7 +191,6 @@ while True:
             connection.send(response.encode('utf-8'))
             connection.close()
         elif data.startswith('POST /new_file'):
-            import pdb; pdb.set_trace()
             file_path, file_content = data.split()[-1].split('&')
             file_path = unquote_plus(file_path.split('path=')[1])
             file_content = unquote_plus(file_content.split('content=')[1])
@@ -236,5 +234,7 @@ while True:
         # TODO server halting & fix filter connections
 
     except Exception as e:
+        traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
         print(e)
-        sock.close()
+        print(traceback)
+        # sock.close()
