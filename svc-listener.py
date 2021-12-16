@@ -56,7 +56,10 @@ def _worker_process(worker_connection, client=None):
     process_connection, process_client_addr = process_socket.accept()
     while True:
         try:
+            # traverse FS: form/update JSON
             cluster_fs_data = process_connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
+            # update/merge JSON
+            # send updated JSON
             # with open('test', 'a') as f:
             #     f.write(f'{cluster_fs_data}\n')
             # print(cluster_fs_data)
@@ -72,6 +75,8 @@ def _worker_process(worker_connection, client=None):
 
 
 utilities.init_fs(config.CLUSTER_FS_DIR_NAME)
+# form or read FS JSON
+utilities.init_fs_state(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -111,7 +116,8 @@ while True:
             # payload URLs: POST /b64<payload>?b64<host:port>
             # add payload input field
             print(f'Web interface Request data: << GET /index.html')
-            files = utilities.traverse_directory(config.CLUSTER_FS_DIR_NAME)
+
+            files = utilities.traverse_directory(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME, config.CLUSTER_FS_DIR_NAME)
 
             template = templateEnv.get_template('index.html')
             response = template.render(connections=connections, directory=config.CLUSTER_FS_DIR_NAME, files=files)
@@ -170,10 +176,8 @@ while True:
             connection.send(response.encode('utf-8'))
             connection.close()
         elif data.startswith('GET /file_'):
-            # TODO: read from cluster FS JSON //.DS_Store.json
-            file_url = base64.b64decode(data.split()[1][6:]).decode('utf-8')
-            # TODO: read from cluster FS JSON //.DS_Store.json
-            response = open(file_url).read()
+            file_url = data.split()[1]
+            response = utilities.fs_get_by_url(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME, file_url)['content']
 
             connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
             connection.send(response.encode('utf-8'))
@@ -182,7 +186,7 @@ while True:
             # TODO: read from cluster FS JSON //.DS_Store.json
             directory = base64.b64decode(data.split()[1][11:]).decode('utf-8')
 
-            files = utilities.traverse_directory(directory)
+            files = utilities.traverse_directory(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME, directory)
 
             template = templateEnv.get_template('index.html')
             response = template.render(connections=connections, directory=directory, files=files)

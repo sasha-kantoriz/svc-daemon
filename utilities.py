@@ -114,6 +114,17 @@ def init_fs(dir_path):
     os.makedirs(dir_path, exist_ok=True)
 
 
+def init_fs_state(fs_state_file, fs_directory):
+    try:
+        with open(fs_state_file) as f:
+            fs_state = json.load(f)
+    except (json.decoder.JSONDecodeError, FileNotFoundError):        
+        fs_state = traverse_fs_files(fs_directory)
+        with open(fs_state_file, 'w') as f:
+            json.dump(fs_state, f)
+    return fs_state
+
+
 def traverse_fs_files(dir_path):
     _files = []
     for root, subdirs, files in os.walk(dir_path):
@@ -184,14 +195,8 @@ def traverse_directory(fs_state_file, fs_directory, dir_path):
 
 
 def get_fs_state(fs_state_file, fs_directory):
-    try:
-        with open(fs_state_file) as f:
-            fs_state = json.load(f)
-    except (json.decoder.JSONDecodeError, FileNotFoundError):        
-        fs_state = traverse_fs_files(fs_directory)
-        with open(fs_state_file, 'w') as f:
-            json.dump(fs_state, f)
-    return fs_state
+    with open(fs_state_file) as f:
+        return json.load(f)
 
 
 def fs_get_by_url(fs_state_file, fs_directory, file_url):
