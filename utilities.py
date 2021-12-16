@@ -148,6 +148,22 @@ def traverse_fs_files(dir_path):
 def traverse_directory(dir_path):
     _files = []
     root, subdirs, files = list(os.walk(dir_path))[0]
+
+    if len(root.split('/')[:-1]) > 0:
+        parent_directory = os.path.join(*root.split('/')[:-1])
+        _files.append(
+            {
+                "name": '..',
+                "type": "directory",
+                "path": parent_directory,
+                "url": f'directory_{base64.b64encode(parent_directory.encode("utf-8")).decode("utf-8")}',
+                "hash": None,
+                "content": None, # list of nested files?
+                "modified_at": None,
+                "checked_at": datetime.datetime.now().isoformat()
+            }
+        )
+
     for dir_ in subdirs:
         dir_path = os.path.join(root, dir_)
         subdir = {
