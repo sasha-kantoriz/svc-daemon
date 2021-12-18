@@ -127,7 +127,10 @@ def init_fs_state(fs_state_file, fs_directory):
             os.makedirs(fs_directory, exist_ok=True)
             _update_fs(fs_state_file, fs_directory)
         except (json.decoder.JSONDecodeError, FileNotFoundError):
-            pass
+            os.makedirs(fs_directory, exist_ok=True)
+            fs_state = _traverse_fs_files(fs_directory)
+            with open(fs_state_file, 'w') as f:
+                json.dump(fs_state, f)
 
     return fs_state
 

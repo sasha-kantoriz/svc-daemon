@@ -95,6 +95,7 @@ def _worker_process(worker_connection, client=None):
         except Exception as e:
             traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
             print(traceback)
+            return
 
 
 # utilities.init_fs(config.CLUSTER_FS_DIR_NAME)
@@ -232,7 +233,7 @@ while True:
                 connection.sendall(b'HTTP/1.1 200 OK\r\n\r\n')
                 connection.send(response.encode('utf-8'))
                 connection.close()
-            files = utilities.traverse_directory(config.CLUSTER_FS_DIR_NAME)
+            files = utilities.traverse_directory(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME, config.CLUSTER_FS_DIR_NAME)
 
             template = templateEnv.get_template('index.html')
             response = template.render(connections=connections, directory=config.CLUSTER_FS_DIR_NAME, files=files)
