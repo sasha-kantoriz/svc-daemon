@@ -110,22 +110,43 @@ Cluster FS functional:
 """
 
 
-def init_fs(dir_path):
-    os.makedirs(dir_path, exist_ok=True)
+def init_fs(fs_state_file, fs_directory):
+    os.makedirs(fs_directory, exist_ok=True)
+    _update_fs(fs_state_file, fs_directory)
 
 
 def init_fs_state(fs_state_file, fs_directory):
+    os.makedirs(fs_directory, exist_ok=True)
+
     try:
         with open(fs_state_file) as f:
             fs_state = json.load(f)
-    except (json.decoder.JSONDecodeError, FileNotFoundError):        
-        fs_state = traverse_fs_files(fs_directory)
+    except (json.decoder.JSONDecodeError, FileNotFoundError):
+        fs_state = _traverse_fs_files(fs_directory)
         with open(fs_state_file, 'w') as f:
             json.dump(fs_state, f)
+
+    _update_fs(fs_state_file, fs_directory)
     return fs_state
 
 
-def traverse_fs_files(dir_path):
+def update_fs_state(fs_state_file, fs_directory, fs_data=None):
+    fs_state = fs_data if fs_data else _traverse_fs_files(fs_directory)
+    with open(fs_state_file, 'w') as f:
+        json.dump(fs_state, f)
+
+
+def _update_fs(fs_state_file, fs_directory):
+    fs_data = retrieve_fs_state(fs_state_file, fs_directory)
+    for _file in fs_data:
+        if _file['type'] == 'directory':
+            os.makedirs(_file['path'], exist_ok=True)
+        else:
+            with open(_file['path'], 'w') as fd:
+                fd.write(_file['content'])
+
+
+def _traverse_fs_files(dir_path):
     _files = []
     for root, subdirs, files in os.walk(dir_path):
         for dir_ in subdirs:
@@ -168,7 +189,7 @@ def get_file_url(file_path):
 
 
 def traverse_directory(fs_state_file, fs_directory, dir_path):
-    fs_state = get_fs_state(fs_state_file, fs_directory)
+    fs_state = retrieve_fs_state(fs_state_file, fs_directory)
 
     _directory_url = get_directory_url(dir_path)
     _directory, _files = fs_get_by_url(fs_state_file, fs_directory, _directory_url), []
@@ -194,13 +215,13 @@ def traverse_directory(fs_state_file, fs_directory, dir_path):
     return _files
 
 
-def get_fs_state(fs_state_file, fs_directory):
+def retrieve_fs_state(fs_state_file, fs_directory):
     with open(fs_state_file) as f:
         return json.load(f)
 
 
 def fs_get_by_url(fs_state_file, fs_directory, file_url):
-    fs_state = get_fs_state(fs_state_file, fs_directory)
+    fs_state = retrieve_fs_state(fs_state_file, fs_directory)
     for _file in fs_state:
         if _file['url'] == file_url:
             return _file
