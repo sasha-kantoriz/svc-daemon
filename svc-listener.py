@@ -1,11 +1,12 @@
 from datetime import datetime
 import socket
-import pdb
+import json
+import jsonpatch
+import time
 import base64
 import jinja2
 from urllib.parse import unquote_plus
 from optparse import OptionParser
-from threading import Thread
 import multiprocessing
 
 import config
@@ -56,25 +57,47 @@ def _worker_process(worker_connection, client=None):
     process_connection, process_client_addr = process_socket.accept()
     while True:
         try:
-            # traverse FS: form/update JSON
-            cluster_fs_data = process_connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
+            time.sleep(config.CLUSTER_FS_RELICATION_INTERVAL)
+            # FS updates watcher: _traverse?
+            fs_state = utilities.init_fs_state(
+                config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
+
+            worker_fs_data = json.loads(
+                process_connection.recv(config.MAX_TRANSMIT_BYTES))
+
             # update/merge JSON
+            # apply patches from worker state
+            patch = jsonpatch.make_patch(fs_state, worker_fs_data)
+            latest_fs_state = patch.apply(fs_state) #, in_place=True)
+            # add from server all missing files by ['url']
+            client_files_urls = [f['url'] for f in latest_fs_state]
+            for f in fs_state:
+                if not f['url'] in client_files_urls:
+                    latest_fs_state.append(f)
+
+            utilities.update_fs_state(
+                config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME, latest_fs_state)
+            utilities._update_fs(
+                config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
+            
             # send updated JSON
-            # with open('test', 'a') as f:
-            #     f.write(f'{cluster_fs_data}\n')
-            # print(cluster_fs_data)
-            process_connection.sendall(f'Cluster server\'s FS data: {datetime.now()}'.encode('utf-8'))
+            fs_state_json = json.dumps(latest_fs_state).encode('utf-8')
+            process_connection.sendall(fs_state_json)
             # cluster fs watcher
             # updates handler
+            # write changes
             # pass process_socket in
         except socket.error as e:
             print(e)
             print('Remote worker closed/breaked connection. Terminating.')
             process_connection.close()
             return
+        except Exception as e:
+            traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
+            print(traceback)
 
 
-utilities.init_fs(config.CLUSTER_FS_DIR_NAME)
+# utilities.init_fs(config.CLUSTER_FS_DIR_NAME)
 # form or read FS JSON
 utilities.init_fs_state(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
 
@@ -105,6 +128,7 @@ while True:
         payload = b'whoami'
 
         connections = [conn for conn in connections if utilities._check_conn(conn)]
+        utilities.init_fs_state(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
 
         data = connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
         # slave connected
@@ -228,15 +252,6 @@ while True:
             pass
         else:
             print(f'{client_addr}: << {data}')
-        # print(data)
-
-        # data = connection.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
-
-
-        # connections = [conn for conn in connections if _check_conn(conn)]
-        # Thread(target=server, args=(payload, connection, connections)).start()
-        # TODO server halting & fix filter connections
-
     except Exception as e:
         traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
         print(e)

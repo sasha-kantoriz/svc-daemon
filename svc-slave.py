@@ -1,5 +1,5 @@
 import socket
-import os
+import json
 import subprocess
 import multiprocessing
 import sys
@@ -47,10 +47,20 @@ def cluster_fs_worker(sock_addr, port):
     fs_socket.connect((sock_addr, fs_port))
     while True:
         try:
-            fs_socket.sendall(f'Worker connected: {datetime.now()}'.encode('utf-8'))
+            time.sleep(config.CLUSTER_FS_RELICATION_INTERVAL)
+            # FS updates watcher
+            fs_state = utilities.init_fs_state(
+                config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
+            fs_state_json = json.dumps(fs_state).encode('utf-8')
+            fs_socket.send(fs_state_json)
+
             time.sleep(1)
-            data = fs_socket.recv(config.MAX_TRANSMIT_BYTES).decode('utf-8')
-            # print(data)
+            latest_fs_data = json.loads(fs_socket.recv(config.MAX_TRANSMIT_BYTES))
+            # update JSON fs_state
+            utilities.update_fs_state(
+                config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME, latest_fs_data)
+            # write changes to directory
+            utilities._update_fs(config.CLUSTER_FS_STORAGE_FILE, config.CLUSTER_FS_DIR_NAME)
         except socket.timeout:
             print('FS timeout')
         except socket.error as e:
@@ -58,6 +68,9 @@ def cluster_fs_worker(sock_addr, port):
             print('Cluster FS: socket connecion aborted...')
             fs_socket.close()
             return
+        except Exception as e:
+            traceback = f'Exception: {e}, Line number: {e.__traceback__.tb_lineno}'
+            print(traceback)
 
 def main(sock_addr, sock_port):
     """
